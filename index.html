@@ -15,85 +15,217 @@
 
         .screen {
             display: flex;
-            align-items: center;
             justify-content: center;
-            height: 100vh;
+            height: 90%;
         }
 
         .container {
             max-width: 1200px;
+            border-radius: 10px;
+            border: 5px solid grey;
         }
 
         .field {
             width: 75px;
             height: 75px;
-            background-color: whitesmoke;
-            margin: 1px;
-            border: 1px solid blue;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
         }
 
         .field.fill {
             background-color: rgba(180, 78, 30, 0.452);
+            border: unset;
+            clip-path: circle(35% at 50% 50%);
+        }
+
+        .actor {
+            background-color: rgba(123, 180, 30, 0.452);
+            clip-path: polygon(0% 100%, 100% 100%, 100% 0%, 90% 5%, 80% 30%, 20% 30%, 10% 5%, 0% 0%);
+            border-radius: 10px;
         }
 
         .row {
             display: flex;
             flex-wrap: wrap;
         }
+
+        .menu {
+            display: flex;
+            justify-content: center;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        #points {
+            margin: 0 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+        }
+
+        button {
+            display: block;
+            flex-grow: 1;
+            margin: 20px 5px 0px 0px;
+            font-size: 5vw;
+            max-width: 300px;
+            padding: 0;
+            border: 5px solid grey;
+            border-radius: 10px;
+            background: none;
+        }
+
+        button:hover {
+            color: rgb(0, 162, 255);
+        }
+
+        @media(max-width: 770px) {
+            .field {
+                width: 9vw;
+                height: 9vw;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <div class="menu">
+        <b>POINTS: </b>
+        <div id="points">0</div>
+    </div>
     <div class="screen">
-
         <div class="container">
         </div>
     </div>
+    <div class="controls">
+        <button id="left">LEFT</button>
+        <button id="right">RIGHT</button>
+    </div>
     <script>
+        const MATRIX_SIZE = {
+            row: 10,
+            col: 10
+        };
+        const GAME_CONFIG = {
+            speed: 1500,
+            positive_points: 1000,
+            negative_points: 500
+        };
+        const GAME_ACTOR = {
+            curr_col: 5
+        };
+
         let container = document.querySelector('.container');
         let matrix = [];
-        let position = {
-            row: 0,
-            col: 0
-        }
-        for (let index = 0; index < 10; index++) {
-            let row = [];
-            let rowHTML = document.createElement('div');
-            rowHTML.className = 'row';
 
-            for (let j = 0; j < 10; j++) {
-                let el = document.createElement('div');
-                el.className = 'field';
-                row[j] = el;
-                rowHTML.insertAdjacentElement("beforeend", el);
-            }
-            matrix[index] = row;
-            container.insertAdjacentElement("beforeend", rowHTML);
-        }
-        document.addEventListener('keydown', function (e) {
-            console.log(e.keyCode);
-            // 38 - up, 40 - down,  37- left, 39 - right
-            if (e.keyCode < 37 || e.keyCode > 40) return;
-            // Despawn fill
-            matrix[position.row][position.col].classList.toggle('fill');
+        // IIFE za init matrice
+        (function () {
+            for (let i = 0; i < MATRIX_SIZE.row; i++) {
+                let row = [];
+                let rowHTML = document.createElement('div');
+                rowHTML.className = 'row';
 
-            if (e.keyCode == 38 && position.row > 0) {
-                position.row--;
+                for (let j = 0; j < MATRIX_SIZE.col; j++) {
+                    let el = document.createElement('div');
+                    el.className = 'field';
+                    row[j] = el;
+                    rowHTML.insertAdjacentElement("beforeend", el);
+                }
+
+                matrix[i] = row;
+                container.insertAdjacentElement("beforeend", rowHTML);
             }
-            if (e.keyCode == 40 && position.row < 9) {
-                position.row++;
+        })();
+
+        // Pomera jedan element dole
+        function moveElDown(row, col) {
+            if (row < MATRIX_SIZE.row - 2) {
+                matrix[row][col].classList.remove('fill');
+                matrix[row + 1][col].classList.add('fill');
             }
-            if (e.keyCode == 37 && position.col > 0) {
-                position.col--;
+        }
+
+        function checkColliders(row, col) {
+            if (row == MATRIX_SIZE.row - 2) {
+                let pointsEl = document.querySelector('#points');
+
+                if (matrix[row + 1][col].classList.contains('actor')) {
+                    let points = parseInt(pointsEl.innerHTML) + GAME_CONFIG.positive_points;
+                    pointsEl.innerHTML = points;
+                } else {
+                    let points = parseInt(pointsEl.innerHTML) - GAME_CONFIG.negative_points;
+                    pointsEl.innerHTML = points;
+                }
+                matrix[row][col].classList.remove('fill');
             }
-            if (e.keyCode == 39 && position.col < 9) {
-                position.col++;
+        }
+
+        // Prolazi kroz aktivne elemente i spusta ih za jedno polje dole
+        function updateMatrix() {
+            for (let i = MATRIX_SIZE.row - 1; i >= 0; i--) {
+                for (let j = 0; j < MATRIX_SIZE.col; j++) {
+                    if (matrix[i][j].classList.contains('fill')) {
+                        moveElDown(i, j);
+                        checkColliders(i, j);
+                    }
+                }
             }
-            // Spawn fill
-            matrix[position.row][position.col].classList.toggle('fill');
-        })
-        // init start fill
-        matrix[position.row][position.col].classList.toggle('fill');
+        }
+
+        // Random stvaranje na vrhu 
+        setInterval(function () {
+            let num = Math.floor(Math.random() * MATRIX_SIZE.col);
+            matrix[0][num].classList.add('fill');
+        }, GAME_CONFIG.speed);
+
+        setInterval(updateMatrix, GAME_CONFIG.speed / 2);
+
+        function actorReRender() {
+            for (let i = 0; i < MATRIX_SIZE.col; i++) {
+                matrix[MATRIX_SIZE.row - 1][i].classList.remove('actor');
+            }
+            matrix[MATRIX_SIZE.row - 1][GAME_ACTOR.curr_col].classList.add('actor');
+        }
+
+        // Init aktora
+        (function () {
+            matrix[MATRIX_SIZE.row - 1][GAME_ACTOR.curr_col].classList.add('actor');
+
+            document.addEventListener('keydown', function (e) {
+                if (e.keyCode < 37 || e.keyCode > 40) return;
+
+                if (e.keyCode == 37 && GAME_ACTOR.curr_col > 0) {
+                    GAME_ACTOR.curr_col--;
+                }
+                if (e.keyCode == 39 && GAME_ACTOR.curr_col < MATRIX_SIZE.col - 1) {
+                    GAME_ACTOR.curr_col++;
+                }
+                actorReRender();
+            });
+        })();
+
+        // Button listeners
+        (function () {
+            let btnLeft = document.querySelector('#left');
+            let btnRight = document.querySelector('#right');
+
+            btnLeft.addEventListener('click', function () {
+                if (GAME_ACTOR.curr_col > 0)
+                    GAME_ACTOR.curr_col--;
+                actorReRender();
+            });
+
+            btnRight.addEventListener('click', function () {
+                if (GAME_ACTOR.curr_col < MATRIX_SIZE.col - 1)
+                    GAME_ACTOR.curr_col++;
+                actorReRender();
+            });
+
+        })();
+
     </script>
 </body>
 
